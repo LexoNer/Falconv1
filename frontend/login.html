@@ -61,10 +61,11 @@
       submitBtn.textContent = 'Ingresando...'
 
       try {
-        const { user } = await api.post('/auth/login', {
+        const { token, user } = await api.post('/auth/login', {
           email: document.getElementById('email').value,
           password: document.getElementById('password').value,
         })
+        localStorage.setItem('falcon_token', token)
         window.location.href = user.role === 'admin' ? 'admin.html' : 'dashboard.html'
       } catch (err) {
         errorEl.textContent = err.message

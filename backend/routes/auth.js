@@ -17,22 +17,13 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     )
 
-    const isProd = !!process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV === 'production'
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    })
-
-    res.json({ ok: true, user: { id: user._id, email: user.email, role: user.role, name: user.name, zone: user.zone } })
+    res.json({ ok: true, token, user: { id: user._id, email: user.email, role: user.role, name: user.name, zone: user.zone } })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
 })
 
 router.post('/logout', (req, res) => {
-  res.clearCookie('token')
   res.json({ ok: true })
 })
 

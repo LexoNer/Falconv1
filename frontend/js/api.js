@@ -1,10 +1,14 @@
 import { API_BASE_URL } from './config.js'
 
 async function request(path, options = {}) {
+  const token = localStorage.getItem('falcon_token')
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
