@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Dashboard — Falcon Portal</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+  <div class="sidebar-overlay" id="overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <span class="eagle">🦅</span>
+        <div>
+          <div class="brand">Falcon Portal</div>
+          <div class="tagline">Red de distribuidores</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">Principal</div>
+        <a href="dashboard.html" class="nav-link active"><span class="icon">📊</span> Mi Dashboard</a>
+        <a href="catalog.html" class="nav-link"><span class="icon">📦</span> Catálogo</a>
+        <a href="cart.html" class="nav-link"><span class="icon">🛒</span> Mi Carrito</a>
+        <a href="orders.html" class="nav-link"><span class="icon">📋</span> Mis Pedidos</a>
+        <div class="nav-section">Información</div>
+        <a href="whatsapp.html" class="nav-link"><span class="icon">💬</span> WhatsApp</a>
+        <a href="impact.html" class="nav-link"><span class="icon">🌿</span> Impacto Ambiental</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <strong id="userName">...</strong>
+          <span id="userZone"></span>
+        </div>
+        <button class="btn btn-outline btn-sm btn-full" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="top-bar">
+        <button class="hamburger" id="hamburger">☰</button>
+        <h1>Mi Dashboard</h1>
+        <a href="catalog.html" class="btn btn-primary btn-sm">+ Nuevo Pedido</a>
+      </div>
+      <div class="page-content">
+        <div id="loading" style="text-align:center;padding:3rem"><span class="spinner"></span></div>
+        <div id="content" style="display:none">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="totalOrders">—</div>
+              <div class="stat-label">Pedidos totales</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="pendingOrders">—</div>
+              <div class="stat-label">Pendientes</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="totalSpent">—</div>
+              <div class="stat-label">Total comprado</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+              <h3 style="font-size:1rem;font-weight:700;color:var(--forest-dark)">Pedidos recientes</h3>
+              <a href="orders.html" style="font-size:.85rem;color:var(--moss)">Ver todos →</a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Fecha</th><th>Productos</th><th>Total</th><th>Estado</th></tr></thead>
+                <tbody id="ordersTable"><tr><td colspan="4" class="empty-state">Cargando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, logout } from './js/auth.js'
+    import { api } from './js/api.js'
+
+    const user = await requireAuth('distribuidor')
+    if (!user) return
+
+    document.getElementById('userName').textContent = user.name || user.email
+    document.getElementById('userZone').textContent = user.zone || ''
+    document.getElementById('logoutBtn').addEventListener('click', logout)
+
+    const hamburger = document.getElementById('hamburger')
+    const sidebar = document.getElementById('sidebar')
+    const overlay = document.getElementById('overlay')
+    hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open') })
+    overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open') })
+
+    try {
+      const stats = await api.get('/dashboard/stats')
+      document.getElementById('totalOrders').textContent = stats.totalOrders
+      document.getElementById('pendingOrders').textContent = stats.pendingOrders
+      document.getElementById('totalSpent').textContent = '₡' + (stats.totalRevenue || 0).toLocaleString('es-CR')
+
+      const tbody = document.getElementById('ordersTable')
+      if (!stats.recentOrders.length) {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Aún no tenés pedidos. <a href="catalog.html" style="color:var(--moss)">¡Hacé el primero!</a></p></div></td></tr>'
+      } else {
+        tbody.innerHTML = stats.recentOrders.map(o => `
+          <tr>
+            <td>${new Date(o.createdAt).toLocaleDateString('es-CR')}</td>
+            <td>${o.items.length} producto${o.items.length !== 1 ? 's' : ''}</td>
+            <td>₡${(o.total || 0).toLocaleString('es-CR')}</td>
+            <td><span class="badge badge-${o.status}">${o.status.replace('_', ' ')}</span></td>
+          </tr>`).join('')
+      }
+
+      document.getElementById('loading').style.display = 'none'
+      document.getElementById('content').style.display = 'block'
+    } catch (e) {
+      document.getElementById('loading').innerHTML = `<div class="alert alert-error">${e.message}</div>`
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Carrito — Falcon Portal</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <style>
+    .cart-layout { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; }
+    .cart-item { display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--gray-100); }
+    .cart-item-emoji { font-size: 2rem; width: 3rem; text-align: center; }
+    .cart-item-info { flex: 1; }
+    .cart-item-name { font-weight: 600; font-size: .95rem; color: var(--forest-dark); }
+    .cart-item-meta { font-size: .82rem; color: var(--gray-300); }
+    .cart-item-price { font-weight: 700; color: var(--forest); }
+    .qty-control { display: flex; align-items: center; gap: .5rem; }
+    .qty-btn { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--gray-100); background: white; font-size: 1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .qty-btn:hover { background: var(--gray-100); }
+    .order-summary { position: sticky; top: 80px; }
+    .summary-line { display: flex; justify-content: space-between; padding: .5rem 0; font-size: .92rem; }
+    .summary-line.total { font-weight: 700; font-size: 1.1rem; border-top: 2px solid var(--gray-100); margin-top: .5rem; padding-top: .75rem; }
+    @media (max-width: 768px) { .cart-layout { grid-template-columns: 1fr; } .order-summary { position: static; } }
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo"><span class="eagle">🦅</span><div><div class="brand">Falcon Portal</div><div class="tagline">Red de distribuidores</div></div></div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">Principal</div>
+        <a href="dashboard.html" class="nav-link"><span class="icon">📊</span> Mi Dashboard</a>
+        <a href="catalog.html" class="nav-link"><span class="icon">📦</span> Catálogo</a>
+        <a href="cart.html" class="nav-link active"><span class="icon">🛒</span> Mi Carrito</a>
+        <a href="orders.html" class="nav-link"><span class="icon">📋</span> Mis Pedidos</a>
+        <div class="nav-section">Información</div>
+        <a href="whatsapp.html" class="nav-link"><span class="icon">💬</span> WhatsApp</a>
+        <a href="impact.html" class="nav-link"><span class="icon">🌿</span> Impacto Ambiental</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info"><strong id="userName">...</strong><span id="userZone"></span></div>
+        <button class="btn btn-outline btn-sm btn-full" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="top-bar">
+        <button class="hamburger" id="hamburger">☰</button>
+        <h1>Mi Carrito</h1>
+        <a href="catalog.html" class="btn btn-outline btn-sm">← Seguir comprando</a>
+      </div>
+      <div class="page-content">
+        <div id="emptyCart" style="display:none" class="card">
+          <div class="empty-state" style="padding:3rem">
+            <div style="font-size:3rem">🛒</div>
+            <p>Tu carrito está vacío. <a href="catalog.html" style="color:var(--moss)">Ver catálogo →</a></p>
+          </div>
+        </div>
+        <div class="cart-layout" id="cartLayout" style="display:none">
+          <div class="card">
+            <h3 style="font-weight:700;margin-bottom:1rem;color:var(--forest-dark)">Productos seleccionados</h3>
+            <div id="cartItems"></div>
+            <button class="btn btn-outline btn-sm" onclick="clearCart()" style="margin-top:1rem">🗑 Vaciar carrito</button>
+          </div>
+          <div class="order-summary">
+            <div class="card">
+              <h3 style="font-weight:700;margin-bottom:1rem;color:var(--forest-dark)">Resumen</h3>
+              <div id="summaryLines"></div>
+              <div class="summary-line total"><span>Total</span><span id="grandTotal">₡0</span></div>
+              <div class="form-group" style="margin-top:1rem">
+                <label>Notas para el pedido</label>
+                <textarea id="notes" rows="3" placeholder="Instrucciones de entrega, urgencia..." style="padding:.65rem;border:1.5px solid var(--gray-100);border-radius:var(--radius);resize:vertical"></textarea>
+              </div>
+              <div id="orderError" class="alert alert-error" style="display:none"></div>
+              <div id="orderSuccess" class="alert alert-success" style="display:none"></div>
+              <button class="btn btn-primary btn-full" id="orderBtn" style="margin-top:.5rem">✅ Confirmar pedido</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, logout } from './js/auth.js'
+    import { api } from './js/api.js'
+
+    const user = await requireAuth('distribuidor')
+    if (!user) return
+
+    document.getElementById('userName').textContent = user.name || user.email
+    document.getElementById('userZone').textContent = user.zone || ''
+    document.getElementById('logoutBtn').addEventListener('click', logout)
+
+    const hamburger = document.getElementById('hamburger')
+    const sidebar = document.getElementById('sidebar')
+    const overlay = document.getElementById('overlay')
+    hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open') })
+    overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open') })
+
+    const EMOJIS = { 'Desengrasante': '🧴', 'Limpiador': '🌿', 'Jabón': '🧼', 'Cloro': '🦠', 'Lavaloza': '🍋', 'Gel': '💧', 'Quitamanchas': '👕', 'Desinfectante': '🏠' }
+    function getEmoji(name) { return Object.entries(EMOJIS).find(([k]) => name.includes(k))?.[1] || '📦' }
+
+    window.clearCart = () => { localStorage.removeItem('falcon_cart'); location.reload() }
+
+    function render() {
+      const cart = JSON.parse(localStorage.getItem('falcon_cart') || '[]')
+      if (!cart.length) { document.getElementById('emptyCart').style.display = 'block'; return }
+      document.getElementById('cartLayout').style.display = 'grid'
+
+      const total = cart.reduce((s, i) => s + i.price * i.qty, 0)
+
+      document.getElementById('cartItems').innerHTML = cart.map((item, idx) => `
+        <div class="cart-item">
+          <div class="cart-item-emoji">${getEmoji(item.name)}</div>
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-meta">₡${item.price.toLocaleString('es-CR')} por ${item.unit}</div>
+          </div>
+          <div class="qty-control">
+            <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
+            <span style="font-weight:600;min-width:1.5rem;text-align:center">${item.qty}</span>
+            <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+          </div>
+          <div class="cart-item-price">₡${(item.price*item.qty).toLocaleString('es-CR')}</div>
+          <button onclick="removeItem(${idx})" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--gray-300)">✕</button>
+        </div>`).join('')
+
+      document.getElementById('summaryLines').innerHTML = cart.map(i =>
+        `<div class="summary-line"><span>${i.name.split(' ').slice(0,3).join(' ')}… x${i.qty}</span><span>₡${(i.price*i.qty).toLocaleString('es-CR')}</span></div>`).join('')
+
+      document.getElementById('grandTotal').textContent = '₡' + total.toLocaleString('es-CR')
+    }
+
+    window.changeQty = (idx, delta) => {
+      const cart = JSON.parse(localStorage.getItem('falcon_cart') || '[]')
+      cart[idx].qty = Math.max(1, cart[idx].qty + delta)
+      localStorage.setItem('falcon_cart', JSON.stringify(cart))
+      render()
+    }
+
+    window.removeItem = (idx) => {
+      const cart = JSON.parse(localStorage.getItem('falcon_cart') || '[]')
+      cart.splice(idx, 1)
+      localStorage.setItem('falcon_cart', JSON.stringify(cart))
+      render()
+    }
+
+    document.getElementById('orderBtn').addEventListener('click', async () => {
+      const cart = JSON.parse(localStorage.getItem('falcon_cart') || '[]')
+      const btn = document.getElementById('orderBtn')
+      const errEl = document.getElementById('orderError')
+      const okEl = document.getElementById('orderSuccess')
+      errEl.style.display = 'none'
+      okEl.style.display = 'none'
+      btn.disabled = true
+      btn.textContent = 'Enviando...'
+      try {
+        await api.post('/orders', { items: cart, notes: document.getElementById('notes').value })
+        localStorage.removeItem('falcon_cart')
+        okEl.textContent = '✅ ¡Pedido enviado! Te confirmamos por WhatsApp pronto.'
+        okEl.style.display = 'block'
+        document.getElementById('cartItems').innerHTML = ''
+        document.getElementById('summaryLines').innerHTML = ''
+        setTimeout(() => location.href = 'orders.html', 2000)
+      } catch (e) {
+        errEl.textContent = e.message
+        errEl.style.display = 'block'
+        btn.disabled = false
+        btn.textContent = '✅ Confirmar pedido'
+      }
+    })
+
+    render()
+  </script>
+</body>
+</html>

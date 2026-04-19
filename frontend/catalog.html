@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo — Falcon Portal</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <style>
+    .catalog-filters { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .filter-btn { padding: .4rem .9rem; border-radius: 99px; font-size: .85rem; cursor: pointer; border: 1.5px solid var(--gray-100); background: white; transition: all .2s; }
+    .filter-btn.active { background: var(--forest); color: white; border-color: var(--forest); }
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+    .product-card { background: white; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); transition: transform .2s, box-shadow .2s; }
+    .product-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .product-img { height: 140px; background: var(--lime-light); display: flex; align-items: center; justify-content: center; font-size: 3.5rem; }
+    .product-body { padding: 1rem; }
+    .product-name { font-weight: 700; font-size: .98rem; color: var(--forest-dark); margin-bottom: .25rem; }
+    .product-desc { font-size: .82rem; color: var(--gray-600); line-height: 1.4; margin-bottom: .75rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-price { font-size: 1.2rem; font-weight: 700; color: var(--forest); }
+    .product-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+    .product-unit { font-size: .8rem; color: var(--gray-300); }
+    .qty-row { display: flex; gap: .5rem; align-items: center; margin-top: .75rem; }
+    .qty-input { width: 60px; padding: .4rem; border: 1.5px solid var(--gray-100); border-radius: var(--radius-sm); text-align: center; font-size: .95rem; }
+    .cart-badge { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--gold); color: var(--forest-dark); padding: .85rem 1.5rem; border-radius: 99px; font-weight: 700; box-shadow: var(--shadow-lg); font-size: .95rem; cursor: pointer; transition: transform .2s; z-index: 200; }
+    .cart-badge:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <span class="eagle">🦅</span>
+        <div><div class="brand">Falcon Portal</div><div class="tagline">Red de distribuidores</div></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">Principal</div>
+        <a href="dashboard.html" class="nav-link"><span class="icon">📊</span> Mi Dashboard</a>
+        <a href="catalog.html" class="nav-link active"><span class="icon">📦</span> Catálogo</a>
+        <a href="cart.html" class="nav-link"><span class="icon">🛒</span> Mi Carrito</a>
+        <a href="orders.html" class="nav-link"><span class="icon">📋</span> Mis Pedidos</a>
+        <div class="nav-section">Información</div>
+        <a href="whatsapp.html" class="nav-link"><span class="icon">💬</span> WhatsApp</a>
+        <a href="impact.html" class="nav-link"><span class="icon">🌿</span> Impacto Ambiental</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info"><strong id="userName">...</strong><span id="userZone"></span></div>
+        <button class="btn btn-outline btn-sm btn-full" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="top-bar">
+        <button class="hamburger" id="hamburger">☰</button>
+        <h1>Catálogo de Productos</h1>
+        <a href="cart.html" class="btn btn-primary btn-sm">🛒 Ver carrito</a>
+      </div>
+      <div class="page-content">
+        <div class="catalog-filters" id="filters"></div>
+        <div id="loading" style="text-align:center;padding:3rem"><span class="spinner"></span></div>
+        <div class="products-grid" id="productsGrid" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cart-badge" id="cartBadge" style="display:none" onclick="location.href='cart.html'">
+    🛒 <span id="cartCount">0</span> items — ir al carrito
+  </div>
+
+  <script type="module">
+    import { requireAuth, logout } from './js/auth.js'
+    import { api } from './js/api.js'
+
+    const user = await requireAuth('distribuidor')
+    if (!user) return
+
+    document.getElementById('userName').textContent = user.name || user.email
+    document.getElementById('userZone').textContent = user.zone || ''
+    document.getElementById('logoutBtn').addEventListener('click', logout)
+
+    const hamburger = document.getElementById('hamburger')
+    const sidebar = document.getElementById('sidebar')
+    const overlay = document.getElementById('overlay')
+    hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open') })
+    overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open') })
+
+    const EMOJIS = { 'Desengrasantes': '🧴', 'Multiusos': '🌿', 'Higiene Personal': '🧼', 'Desinfectantes': '🦠', 'Lavavajillas': '🍋', 'Baños': '🚿', 'Pisos': '🏠', 'Lavandería': '👕', 'Vidrios': '🪟' }
+
+    let cart = JSON.parse(localStorage.getItem('falcon_cart') || '[]')
+    let products = []
+    let activeFilter = 'Todos'
+
+    function updateCartBadge() {
+      const count = cart.reduce((s, i) => s + i.qty, 0)
+      const badge = document.getElementById('cartBadge')
+      document.getElementById('cartCount').textContent = count
+      badge.style.display = count > 0 ? 'block' : 'none'
+    }
+
+    function saveCart() {
+      localStorage.setItem('falcon_cart', JSON.stringify(cart))
+      updateCartBadge()
+    }
+
+    function addToCart(product, qty) {
+      const existing = cart.find(i => i.sku === product.sku)
+      if (existing) existing.qty += qty
+      else cart.push({ id: product._id, sku: product.sku, name: product.name, price: product.price, unit: product.unit, qty })
+      saveCart()
+    }
+
+    function render(list) {
+      const grid = document.getElementById('productsGrid')
+      grid.innerHTML = list.map(p => `
+        <div class="product-card">
+          <div class="product-img">${EMOJIS[p.category] || '📦'}</div>
+          <div class="product-body">
+            <div class="product-name">${p.name}</div>
+            <div class="product-desc">${p.description || ''}</div>
+            <div class="product-meta">
+              <div>
+                <div class="product-price">₡${p.price.toLocaleString('es-CR')}</div>
+                <div class="product-unit">por ${p.unit} · mín. ${p.minOrder}</div>
+              </div>
+              ${p.eco ? '<span class="badge badge-eco">🌱 Eco</span>' : ''}
+            </div>
+            <div class="qty-row">
+              <input type="number" class="qty-input" value="${p.minOrder}" min="${p.minOrder}" step="1" data-sku="${p.sku}">
+              <button class="btn btn-forest btn-sm" style="flex:1" data-id="${p._id}" data-sku="${p.sku}">Agregar al carrito</button>
+            </div>
+          </div>
+        </div>`).join('')
+
+      grid.querySelectorAll('[data-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sku = btn.dataset.sku
+          const qtyInput = grid.querySelector(`.qty-input[data-sku="${sku}"]`)
+          const qty = parseInt(qtyInput.value) || 1
+          const product = products.find(p => p.sku === sku)
+          addToCart(product, qty)
+          btn.textContent = '✅ Agregado'
+          setTimeout(() => btn.textContent = 'Agregar al carrito', 1500)
+        })
+      })
+    }
+
+    function setFilter(cat) {
+      activeFilter = cat
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat))
+      render(cat === 'Todos' ? products : products.filter(p => p.category === cat))
+    }
+
+    try {
+      products = await api.get('/products')
+      const categories = ['Todos', ...new Set(products.map(p => p.category))]
+      document.getElementById('filters').innerHTML = categories.map(c =>
+        `<button class="filter-btn${c === 'Todos' ? ' active' : ''}" data-cat="${c}">${c}</button>`).join('')
+      document.querySelectorAll('.filter-btn').forEach(b => b.addEventListener('click', () => setFilter(b.dataset.cat)))
+
+      document.getElementById('loading').style.display = 'none'
+      document.getElementById('productsGrid').style.display = 'grid'
+      render(products)
+      updateCartBadge()
+    } catch (e) {
+      document.getElementById('loading').innerHTML = `<div class="alert alert-error">${e.message}</div>`
+    }
+  </script>
+</body>
+</html>

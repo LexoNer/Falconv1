@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Falcon Portal</title>
+  <link rel="stylesheet" href="css/base.css">
+  <style>
+    body { background: var(--forest); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: white; padding: 2.5rem 2rem; border-radius: 12px; text-align: center; max-width: 360px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+    .eagle { font-size: 4rem; line-height: 1; margin-bottom: 1rem; }
+    h1 { font-family: Georgia, serif; font-size: 1.8rem; color: #1F4D2B; margin-bottom: .25rem; }
+    p { color: #4A5D52; font-size: .92rem; margin-bottom: 1.5rem; }
+    .btn { display: block; background: #E8A838; color: #0F2818; padding: .8rem 1.5rem; border-radius: 8px; font-weight: 700; font-size: 1rem; text-decoration: none; transition: background .2s; }
+    .btn:hover { background: #C8881A; }
+    .status { margin-top: 1rem; font-size: .82rem; font-family: monospace; color: #B5BBB3; }
+    .ok { color: #5A8A3A; }
+    .err { color: #B84848; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="eagle">🦅</div>
+    <h1>Falcon Portal</h1>
+    <p>Portal de distribuidores autorizados de Falcon Productos de Limpieza</p>
+    <a href="login.html" class="btn">Ingresar al portal →</a>
+    <div class="status" id="status">Verificando backend...</div>
+  </div>
+
+  <script type="module">
+    import { api } from './js/api.js'
+    const el = document.getElementById('status')
+    try {
+      const h = await api.get('/health')
+      el.textContent = `✅ Backend OK · DB: ${h.db}`
+      el.className = 'status ok'
+    } catch (e) {
+      el.textContent = `⚠ Backend no disponible: ${e.message}`
+      el.className = 'status err'
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Automatizado — Falcon Portal</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <style>
+    .wa-container { max-width: 420px; margin: 0 auto; }
+    .wa-phone { background: #ECE5DD; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-lg); }
+    .wa-header { background: #075E54; color: white; padding: 1rem 1.25rem; display: flex; align-items: center; gap: .75rem; }
+    .wa-avatar { width: 42px; height: 42px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+    .wa-name { font-weight: 600; font-size: .98rem; }
+    .wa-status { font-size: .78rem; opacity: .8; }
+    .wa-messages { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; min-height: 360px; max-height: 400px; overflow-y: auto; }
+    .msg { max-width: 78%; padding: .6rem .9rem; border-radius: 12px; font-size: .9rem; line-height: 1.45; position: relative; }
+    .msg-time { font-size: .72rem; opacity: .6; margin-top: .2rem; text-align: right; }
+    .msg-in { background: white; align-self: flex-start; border-radius: 12px 12px 12px 0; }
+    .msg-out { background: #DCF8C6; align-self: flex-end; border-radius: 12px 12px 0 12px; }
+    .wa-input { background: #F0F0F0; padding: .75rem 1rem; display: flex; gap: .5rem; align-items: center; }
+    .wa-input input { flex: 1; padding: .6rem 1rem; border: none; border-radius: 99px; background: white; font-size: .9rem; outline: none; }
+    .wa-send { background: #075E54; color: white; width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; font-size: 1.1rem; }
+    .explanation { margin-top: 1.25rem; background: var(--lime-light); border-radius: var(--radius); padding: 1rem 1.25rem; font-size: .88rem; color: var(--forest); }
+    .explanation h4 { font-weight: 700; margin-bottom: .4rem; }
+    .explanation ul { padding-left: 1.1rem; }
+    .explanation li { margin-bottom: .25rem; }
+  </style>
+</head>
+<body>
+  <div class="sidebar-overlay" id="overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo"><span class="eagle">🦅</span><div><div class="brand">Falcon Portal</div><div class="tagline">Red de distribuidores</div></div></div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">Principal</div>
+        <a href="dashboard.html" class="nav-link"><span class="icon">📊</span> Mi Dashboard</a>
+        <a href="catalog.html" class="nav-link"><span class="icon">📦</span> Catálogo</a>
+        <a href="cart.html" class="nav-link"><span class="icon">🛒</span> Mi Carrito</a>
+        <a href="orders.html" class="nav-link"><span class="icon">📋</span> Mis Pedidos</a>
+        <div class="nav-section">Información</div>
+        <a href="whatsapp.html" class="nav-link active"><span class="icon">💬</span> WhatsApp</a>
+        <a href="impact.html" class="nav-link"><span class="icon">🌿</span> Impacto Ambiental</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info"><strong id="userName">...</strong></div>
+        <button class="btn btn-outline btn-sm btn-full" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="top-bar">
+        <button class="hamburger" id="hamburger">☰</button>
+        <h1>WhatsApp Automatizado</h1>
+      </div>
+      <div class="page-content">
+        <div class="wa-container">
+          <div class="wa-phone">
+            <div class="wa-header">
+              <div class="wa-avatar">🦅</div>
+              <div>
+                <div class="wa-name">Falcon Asistente</div>
+                <div class="wa-status">🟢 en línea</div>
+              </div>
+            </div>
+            <div class="wa-messages" id="messages"></div>
+            <div class="wa-input">
+              <input type="text" id="chatInput" placeholder="Escribí un mensaje..." />
+              <button class="wa-send" id="sendBtn">➤</button>
+            </div>
+          </div>
+
+          <div class="explanation">
+            <h4>¿Cómo funciona en producción?</h4>
+            <ul>
+              <li>Conectado a WhatsApp Business API</li>
+              <li>Los distribuidores hacen pedidos por WhatsApp</li>
+              <li>Confirmaciones automáticas al cambiar estado del pedido</li>
+              <li>Alertas de stock y promociones</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, logout } from './js/auth.js'
+
+    const user = await requireAuth()
+    if (!user) return
+
+    document.getElementById('userName').textContent = user.name || user.email
+    document.getElementById('logoutBtn').addEventListener('click', logout)
+
+    const hamburger = document.getElementById('hamburger')
+    const sidebar = document.getElementById('sidebar')
+    const overlay = document.getElementById('overlay')
+    hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open') })
+    overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open') })
+
+    const now = () => new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
+
+    const flow = [
+      { in: null, out: `¡Hola ${user.name?.split(' ')[0] || 'Distribuidor'}! 👋 Soy el asistente de Falcon. ¿En qué te puedo ayudar?\n\n1️⃣ Ver catálogo\n2️⃣ Estado de mis pedidos\n3️⃣ Hablar con un asesor` },
+    ]
+
+    const responses = {
+      '1': '📦 Podés ver el catálogo completo en el portal: falcon-portal-demo.netlify.app/catalog.html\n\nTenemos 10 productos biodegradables disponibles hoy.',
+      '2': '✅ Tu último pedido está *confirmado* y sale mañana por la mañana a tu zona. Te avisamos cuando esté en camino 🚚',
+      '3': 'Perfecto, te conecto con Karolina. Mientras esperás, podés revisar tus pedidos en el portal 😊',
+      'default': 'Entendido 👍 ¿Necesitás algo más?\n\n1️⃣ Ver catálogo\n2️⃣ Estado de pedidos\n3️⃣ Hablar con asesor',
+    }
+
+    const container = document.getElementById('messages')
+
+    function addMsg(text, type) {
+      const div = document.createElement('div')
+      div.className = `msg msg-${type}`
+      div.innerHTML = `${text.replace(/\n/g,'<br>')}<div class="msg-time">${now()}</div>`
+      container.appendChild(div)
+      container.scrollTop = container.scrollHeight
+    }
+
+    setTimeout(() => addMsg(flow[0].out, 'in'), 500)
+
+    function send() {
+      const input = document.getElementById('chatInput')
+      const text = input.value.trim()
+      if (!text) return
+      addMsg(text, 'out')
+      input.value = ''
+      setTimeout(() => {
+        const reply = responses[text] || responses['default']
+        addMsg(reply, 'in')
+      }, 900)
+    }
+
+    document.getElementById('sendBtn').addEventListener('click', send)
+    document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') send() })
+  </script>
+</body>
+</html>

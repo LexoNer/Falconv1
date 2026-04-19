@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distribuidores — Admin Falcon</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+  <div class="sidebar-overlay" id="overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo"><span class="eagle">🦅</span><div><div class="brand">Falcon Portal</div><div class="tagline">Panel Administrativo</div></div></div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">Administración</div>
+        <a href="admin.html" class="nav-link"><span class="icon">📊</span> Dashboard</a>
+        <a href="admin-orders.html" class="nav-link"><span class="icon">📋</span> Pedidos</a>
+        <a href="admin-distributors.html" class="nav-link active"><span class="icon">👥</span> Distribuidores</a>
+        <div class="nav-section">Módulos</div>
+        <a href="whatsapp.html" class="nav-link"><span class="icon">💬</span> WhatsApp</a>
+        <a href="impact.html" class="nav-link"><span class="icon">🌿</span> Impacto Ambiental</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info"><strong id="userName">...</strong><span>Administrador</span></div>
+        <button class="btn btn-outline btn-sm btn-full" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="top-bar">
+        <button class="hamburger" id="hamburger">☰</button>
+        <h1>Distribuidores Autorizados</h1>
+      </div>
+      <div class="page-content">
+        <div id="loading" style="text-align:center;padding:3rem"><span class="spinner"></span></div>
+        <div id="content" style="display:none" class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Nombre</th><th>Correo</th><th>Zona</th><th>Teléfono</th><th>Estado</th></tr></thead>
+              <tbody id="distTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, logout } from './js/auth.js'
+    import { api } from './js/api.js'
+
+    const user = await requireAuth('admin')
+    if (!user) return
+
+    document.getElementById('userName').textContent = user.name || user.email
+    document.getElementById('logoutBtn').addEventListener('click', logout)
+
+    const hamburger = document.getElementById('hamburger')
+    const sidebar = document.getElementById('sidebar')
+    const overlay = document.getElementById('overlay')
+    hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open') })
+    overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open') })
+
+    try {
+      const distributors = await api.get('/admin/distributors')
+      const tbody = document.getElementById('distTable')
+
+      tbody.innerHTML = distributors.map(d => `
+        <tr>
+          <td style="font-weight:600">${d.name || '—'}</td>
+          <td>${d.email}</td>
+          <td>${d.zone || '—'}</td>
+          <td>${d.phone || '—'}</td>
+          <td><span class="badge ${d.active ? 'badge-confirmado' : 'badge-cancelado'}">${d.active ? 'Activo' : 'Inactivo'}</span></td>
+        </tr>`).join('')
+
+      document.getElementById('loading').style.display = 'none'
+      document.getElementById('content').style.display = 'block'
+    } catch (e) {
+      document.getElementById('loading').innerHTML = `<div class="alert alert-error">${e.message}</div>`
+    }
+  </script>
+</body>
+</html>
