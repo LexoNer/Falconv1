@@ -2,7 +2,7 @@ const isLocal = window.location.hostname === 'localhost' || window.location.host
 
 export const API_BASE_URL = isLocal
   ? 'http://localhost:3001/api'
-  : 'https://RAILWAY-URL-AQUI.up.railway.app/api'
+  : 'https://falconv1-production.up.railway.app/api'
 
 export const BRAND = {
   name: 'Falcon',
