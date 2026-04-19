@@ -87,6 +87,7 @@
 
   <script type="module">
     import { requireAuth, logout } from './js/auth.js'
+;(async () => {
 
     const user = requireAuth()
     if (!user) return
@@ -139,6 +140,7 @@
 
     document.getElementById('sendBtn').addEventListener('click', send)
     document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') send() })
+})()
   </script>
 </body>
 </html>

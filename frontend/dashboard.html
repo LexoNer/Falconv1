@@ -80,9 +80,9 @@
   </div>
 
   <script type="module">
-    import { requireAuth, logout } from './js/auth.js'
-    import { api } from './js/api.js'
-
+import { requireAuth, logout } from './js/auth.js'
+import { api } from './js/api.js'
+;(async () => {
     const user = requireAuth('distribuidor')
     if (!user) return
 
@@ -120,6 +120,7 @@
     } catch (e) {
       document.getElementById('loading').innerHTML = `<div class="alert alert-error">${e.message}</div>`
     }
+})()
   </script>
 </body>
 </html>
