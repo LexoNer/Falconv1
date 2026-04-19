@@ -83,7 +83,7 @@
     import { requireAuth, logout } from './js/auth.js'
     import { api } from './js/api.js'
 
-    const user = await requireAuth('distribuidor')
+    const user = requireAuth('distribuidor')
     if (!user) return
 
     document.getElementById('userName').textContent = user.name || user.email

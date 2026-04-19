@@ -66,6 +66,7 @@
           password: document.getElementById('password').value,
         })
         localStorage.setItem('falcon_token', token)
+        localStorage.setItem('falcon_user', JSON.stringify(user))
         window.location.href = user.role === 'admin' ? 'admin.html' : 'dashboard.html'
       } catch (err) {
         errorEl.textContent = err.message
